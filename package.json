@@ -1,0 +1,21 @@
+{
+  "name": "@j.u.p.iter/repl",
+  "version": "0.0.0-semantically-released",
+  "description": "NodeJS custom repl",
+  "main": "dist/lib/index.js",
+  "repository": "git@github.com:j-u-p-iter/repl.git",
+  "author": "Kirill <pn79122821224@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "commit": "jupiter-scripts precommit --allowJs",
+    "build": "jupiter-scripts build --allowJs",
+    "build:watch": "watch 'yarn run build && yarn run changePermission' ./src",
+    "lint": "jupiter-scripts lint --format codeFrame",
+    "lint:fix": "yarn run lint --fix",
+    "test": "jupiter-scripts test",
+    "changePermission": "chmod +x dist/lib/*.js"
+  },
+  "dependencies": {
+    "@j.u.p.iter/jupiter-scripts": "1.16.0"
+  }
+}
