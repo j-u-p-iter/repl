@@ -1,22 +1,58 @@
-import { Recoverable, start, REPLServer } from "repl";
+import { Recoverable, REPLServer, start } from "repl";
 import vm from "vm";
+
+type CutomMethodHandler = (repl: Repl, ...args: any[]) => any;
+interface CustomMethodOptions {
+  [key: string]: any;
+}
 
 /**
  * Essentially repl is the terminal in the terminal.
  * It reads from the external input stream (stdin by defaul).
- * It writes into the external output stream (stdout by default).
+ * It somehow process read data.
+ * It writes into the external output stream a processed data (stdout by default).
+ *
  */
 export class Repl {
+  compiler: any;
+
+  customMethods: {
+    [key: string]: {
+      handler: CutomMethodHandler;
+      options: CustomMethodOptions;
+    };
+  } = {};
+
   /**
    * The reference to the undeflying REPL server.
    *   Available after the "run" is invoked.
+   *
+   * We initialize the server with the "useGlobal" option.
+   *   It means, that the "repl" provides access to any variable that exists in the global scope.
+   *   It is possible to expose a variable to the REPL explicitly by assigning
+   *   it to the context object associated with each REPLServer like this:
+   *
+   *   /-- Code snippet --/
+   *   const repl = new Repl(compiler);
+   *
+   *   repl.server.contex.param = "hello";
+   *   /--Code snippet --/
+   *
+   *   And after that you can get access to the "param" variable
+   *     in the repl.
+   *
+   *   It's extremely useful, if you want to expose and use in the repl such things as:
+   *     - database instance;
+   *     - models.
+   *
    */
-  replServer: REPLServer;
+  server: REPLServer;
 
   /**
    * According to the name of the function, it's used to recover
    *   from such called "Recoverable" syntax errors. We throw this error
    *   in case of multiline inputs.
+   *
    */
   private isRecoverableError = error => {
     if (error.name === "SyntaxError") {
@@ -30,16 +66,19 @@ export class Repl {
    * Custom eval method to execute the user code.
    *
    */
-  private evaluateCode = (code, _, __, callback) => {
+  private evaluateCode = async (code, _, fileName, callback) => {
     let result;
 
     try {
       /**
        * 1. Compiles code to the code, that can be run in V8 engine.
-       * 2. Runs it withing the context of the current "global".
+       * 2. Runs it withing the context of the current "global" to be able to read from "global".
        * 3. Returns the result.
+       *
        */
-      result = vm.runInThisContext(code);
+      const compiledCode = await this.compiler.compile(fileName, code);
+
+      result = vm.runInThisContext(compiledCode);
     } catch (error) {
       if (this.isRecoverableError(error)) {
         return callback(new Recoverable(error));
@@ -52,12 +91,12 @@ export class Repl {
   /**
    * When you run the standalone "node" REPL from the command
    * prompt, what it's doing in the background is running "repl.start()"
-   * to give you the standard REPL.
+   * to give you the standard REPL (opens terminal in the Terminal).
    *
    * Here we want to customise Node's repl. So, we declare our own "start"
    * method.
    *
-   * What is repl is command line tool, that:
+   * The "repl" is the command line tool, that:
    *   - accepts individual lines of user input.
    *     By default input comes from process.stdin stream.
    *     You can set up any stream, using "input" option.
@@ -77,13 +116,16 @@ export class Repl {
    *   - then output the result.
    *     By default repl writes into process.output stream. But again, you can set up any stream,
    *     using "output" option.
+   *
    */
   private startReplServer() {
-    this.replServer = start({
+    this.server = start({
       // The input prompt to display
       prompt: "> ",
 
       // The Readable stream from which REPL input will be read
+      // When you type in the Terminal - you write into the process.stdin.
+      // repl listens this stream and handles the data, that comes from this stream.
       input: process.stdin,
 
       // The Writable stream to which REPL output will be written
@@ -93,6 +135,7 @@ export class Repl {
        * If true, specifies that the default evaluation function will
        *   use the JavaScript global as the context as opposed to creating
        *   a new separate context for the REPL instance.
+       *
        */
       useGlobal: true,
 
@@ -100,35 +143,97 @@ export class Repl {
       eval: this.evaluateCode
     });
 
-    return this.replServer;
+    return this.server;
   }
 
   /**
-   * To define custom commands the "replServer.defineCommand" method should be used.
+   * The repl has some predefined .-prefixed commands. Such commands are invoked by
+   *   typing a "." followed by the keyword. The example of such
+   *   commands: ".help", ".clear" and etc.
    *
-   * Notice, that if you don't call "replServer.displayPrompt" in the end of this method,
-   *   and you don't exit from the repl in the action function, the default prompt won't be shown. 
-   *   So, it's a best practise to call "replServer.displayPrompt" if you don't exit from the repl
+   * To define custom commands the "server.defineCommand" method should be used.
+   *
+   * Notice, that if you don't call "server.displayPrompt" in the end of this method,
+   *   and you don't exit from the repl in the action function, the default prompt won't be shown.
+   *   So, it's a best practise to call "server.displayPrompt" if you don't exit from the repl
    *   inside of the action function.
    */
   private defineCustomCommands() {
-    this.replServer.defineCommand('ls', {
+    this.server.defineCommand("ls", {
       help: "View a list of available global methods/properties",
 
       action: () => {
-        console.log('The available methods/properties are here...');
+        console.log("The available methods/properties are here...");
         /**
-        * If we don't call this method, the default prompt won't be shown
-        *   after this action function has been executed.
-        */
-        this.replServer.displayPrompt();
+         * If we don't call this method, the default prompt won't be shown
+         *   after this action function has been executed.
+         *
+         */
+        this.server.displayPrompt();
       }
     });
   }
 
+  private registerCustomMethods() {
+    Object.entries(this.customMethods).forEach(([methodName, { handler }]) => {
+      this.server.context[methodName] = (...args: any[]) => {
+        return handler(this, ...args);
+      };
+    });
+  }
+
+  constructor(compiler) {
+    this.compiler = compiler;
+  }
+
   public run() {
     this.startReplServer();
-   
+
+    /**
+     * It's important to distinguish the term "method"
+     *   and the term "command".
+     *
+     * "Command" is something, that you write with the .-prefix.
+     *   It's something, that comes with all instances of repl by default and
+     *   you can use to make some common operations or get some common
+     *   information..
+     *
+     * "Custom method" you write without .-prefixes.
+     *   It's primarily specific for the project. And the main goal
+     *   of such methods is to do some manipulations with the parts,
+     *   specific to the project like database or models.
+     *
+     */
+    this.registerCustomMethods();
     this.defineCustomCommands();
+  }
+
+  /**
+   * To be able to get access, for example, to a database,
+   *   to database models, we should add them to the repl server context.
+   *
+   * This is why we need this method.
+   *
+   * This method is public, cause a database and a model instances
+   *   are project specific things and should be added outside.
+   *
+   * As we said, the methods should be added to the server context.
+   *   The server is available only after we run the "repl". Before this
+   *   there is no server. But we definitely should have an ability to
+   *   add methods before we run a repl. For this purpose we should cache
+   *   all methods in the private property "customMethods" before we run the repl.
+   *   After we run the repl we should add all these methods to the context - register
+   *   them.
+   *
+   */
+  public addMethod(
+    methodName: string,
+    handler: CutomMethodHandler,
+    options: CustomMethodOptions
+  ) {
+    this.customMethods[methodName] = {
+      handler,
+      options
+    };
   }
 }
