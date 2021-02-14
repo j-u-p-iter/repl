@@ -1,3 +1,4 @@
+import figlet from "figlet";
 import { Recoverable, REPLServer, start } from "repl";
 import vm from "vm";
 
@@ -50,8 +51,8 @@ export class Repl {
 
   /**
    * According to the name of the function, it's used to recover
-   *   from such called "Recoverable" syntax errors. We throw this error
-   *   in case of multiline inputs.
+   *   from such called "Recoverable" syntax errors.
+   *   It's thrown by the repl in case of multiline inputs.
    *
    */
   private isRecoverableError = error => {
@@ -88,12 +89,16 @@ export class Repl {
     callback(null, result);
   };
 
+  private printWelcomeMessage() {
+    console.log(figlet.textSync("Welcome to the Repl !", { width: 120 }));
+  }
+
   /**
    * When you run the standalone "node" REPL from the command
    * prompt, what it's doing in the background is running "repl.start()"
    * to give you the standard REPL (opens terminal in the Terminal).
    *
-   * Here we want to customise Node's repl. So, we declare our own "start"
+   * Here we want to customze Node's repl. So, we declare our own "start"
    * method.
    *
    * The "repl" is the command line tool, that:
@@ -102,7 +107,7 @@ export class Repl {
    *     You can set up any stream, using "input" option.
    *
    *   - evaluate those accoriding to a user-defined evaluation function.
-   *     To customise the way, how repl compiles and runs each line of the input,
+   *     To customize the way, how repl compiles and runs each line of the input,
    *     you can use "eval" function. This function will be used, when evaluating each given
    *     line of input.
    *     The important thing to notice is that eval function can error with "repl.Recoverable".
@@ -119,6 +124,8 @@ export class Repl {
    *
    */
   private startReplServer() {
+    this.printWelcomeMessage();
+
     this.server = start({
       // The input prompt to display
       prompt: "> ",
@@ -155,11 +162,11 @@ export class Repl {
    *
    * Notice, that if you don't call "server.displayPrompt" in the end of this method,
    *   and you don't exit from the repl in the action function, the default prompt won't be shown.
-   *   So, it's a best practise to call "server.displayPrompt" if you don't exit from the repl
+   *   So, this is a best practice to call "server.displayPrompt" if you don't exit from the repl
    *   inside of the action function.
    */
   private defineCustomCommands() {
-    this.server.defineCommand("ls", {
+    this.server.defineCommand("customApi", {
       help: "View a list of available global methods/properties",
 
       action: () => {
@@ -174,6 +181,12 @@ export class Repl {
     });
   }
 
+  /**
+   * To register custom methods, we need to add them to the repl context,
+   *   the same way we do for the window object, when we need to make methods
+   *   available globally in the browser.
+   *
+   */
   private registerCustomMethods() {
     Object.entries(this.customMethods).forEach(([methodName, { handler }]) => {
       this.server.context[methodName] = (...args: any[]) => {
@@ -196,7 +209,7 @@ export class Repl {
      * "Command" is something, that you write with the .-prefix.
      *   It's something, that comes with all instances of repl by default and
      *   you can use to make some common operations or get some common
-     *   information..
+     *   information.
      *
      * "Custom method" you write without .-prefixes.
      *   It's primarily specific for the project. And the main goal
@@ -215,7 +228,7 @@ export class Repl {
    * This is why we need this method.
    *
    * This method is public, cause a database and a model instances
-   *   are project specific things and should be added outside.
+   *   are project specific things and should be added from the outside.
    *
    * As we said, the methods should be added to the server context.
    *   The server is available only after we run the "repl". Before this

@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@j.u.p.iter/jupiter-scripts": "1.16.0",
-    "@j.u.p.iter/ts-compiler": "^1.0.1"
+    "@j.u.p.iter/ts-compiler": "^1.0.1",
+    "figlet": "^1.5.0"
   },
   "devDependencies": {
     "find-cache-dir": "^3.3.1"
