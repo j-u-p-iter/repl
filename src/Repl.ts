@@ -79,11 +79,13 @@ export class Repl {
        */
       const compiledCode = await this.compiler.compile(fileName, code);
 
-      result = vm.runInThisContext(compiledCode);
+      result = await vm.runInThisContext(compiledCode);
     } catch (error) {
       if (this.isRecoverableError(error)) {
-        return callback(new Recoverable(error));
+        return callback(new Recoverable(error), null);
       }
+
+      return callback(error, null);
     }
 
     callback(null, result);
