@@ -9,11 +9,9 @@
   "scripts": {
     "commit": "jupiter-scripts precommit --allowJs",
     "build": "jupiter-scripts build --allowJs",
-    "build:watch": "watch 'yarn run build && yarn run changePermission' ./src",
     "lint": "jupiter-scripts lint --format codeFrame",
     "lint:fix": "yarn run lint --fix",
-    "test": "jupiter-scripts test",
-    "changePermission": "chmod +x dist/lib/*.js"
+    "test": "jupiter-scripts test"
   },
   "dependencies": {
     "figlet": "^1.5.0"
