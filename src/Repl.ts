@@ -2,6 +2,8 @@ import figlet from "figlet";
 import { Recoverable, REPLServer, start } from "repl";
 import vm from "vm";
 
+import { Compiler } from "./Compiler";
+
 type CutomMethodHandler = (repl: Repl, ...args: any[]) => any;
 interface CustomMethodOptions {
   [key: string]: any;
@@ -15,9 +17,9 @@ interface CustomMethodOptions {
  *
  */
 export class Repl {
-  compiler: any;
+  private compiler: Compiler;
 
-  customMethods: {
+  private customMethods: {
     [key: string]: {
       handler: CutomMethodHandler;
       options: CustomMethodOptions;
@@ -197,8 +199,8 @@ export class Repl {
     });
   }
 
-  constructor(compiler) {
-    this.compiler = compiler;
+  constructor(tsCompiler: any) {
+    this.compiler = new Compiler(tsCompiler);
   }
 
   public run() {

@@ -10,15 +10,15 @@
     "commit": "jupiter-scripts precommit --allowJs",
     "build": "jupiter-scripts build --allowJs",
     "lint": "jupiter-scripts lint --format codeFrame",
-    "lint:fix": "yarn run lint --fix",
-    "test": "jupiter-scripts test"
+    "lint:fix": "yarn run lint --fix"
   },
   "dependencies": {
-    "figlet": "^1.5.0"
+    "figlet": "^1.5.0",
+    "node-repl-await": "^0.1.1"
   },
   "devDependencies": {
-    "find-cache-dir": "^3.3.1",
+    "@j.u.p.iter/jupiter-scripts": "1.16.0",
     "@j.u.p.iter/ts-compiler": "^1.0.1",
-    "@j.u.p.iter/jupiter-scripts": "1.16.0"
+    "find-cache-dir": "^3.3.1"
   }
 }
